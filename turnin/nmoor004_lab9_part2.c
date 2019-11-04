@@ -1,7 +1,7 @@
 /*	Author: nmoor004
  *  Partner(s) Name: 
  *	Lab Section: 
- *	Assignment: Lab # 9 Exercise # 2
+ *	Assignment: Lab # 9 Exercise # 1
  *	Exercise Description: [optional - include for your own benefit]
  *
  *	I acknowledge all content contained herein, excluding template or example
@@ -10,19 +10,14 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdio.h>
-//#include "io.h"
-#include "RIMS.h"
-
-////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
 ////////////////TIMER FUNCTIONS
-///////////////////////////////////////////////////////////
-/*
-volatile unsigned char TimerFlag = 0; // TimerISR() sets this to 1. C Programmer should clear to 0.
+//////////////////////////////////////////////////
 
+volatile unsigned char TimerFlag = 0; // TimerISR() sets this to 1. C Programmer should clear to 0.
 unsigned long _avr_timer_M = 1;	       // Start count from here, down to 0. Default 1 ms.
 unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks
 unsigned short count = 0x00;
-
 void TimerOn() {
 	// AVR timer/counter controller register TCCR1
 	TCCR1B = 0x0B;     // bit3 = 0: CTC mode (clear timer on compare)
@@ -30,54 +25,57 @@ void TimerOn() {
 			 // 00001011: 0x0B
 			// SO, 8 MHz clock or 8,000,000 / 64 = 125,000 ticks/s
 		       // Thus, TCNT1 register will count at 125,000 tick/s
-
 	// AVR output compare register OCR1A.
 	OCR1A = 125;    // Timer interrupt will be generated when TCNT1==OCR1A
 		       // We want a 1 ms tick. 0.001s * 125,000 ticks/s = 125
 		      // So when TCNT1 register equals 125,
 		     // 1 ms has passed. Thus, we compare to 125.
-
 	// AVR timer interrupt mask register
 	TIMSK1 = 0x02; // bit1: OCIE1A -- enables compare match interrupt
-
 	// Initialize avr counter
 	TCNT1 = 0;
-
 	_avr_timer_cntcurr = _avr_timer_M;
 	// TimerISR will be called every _avr_timer_cntcurr milliseconds
-
 	// Enable globla interrupts
 	SREG |= 0x80; // 0x80: 1000000
 }
-
 void TimerOff() {
 	TCCR1B = 0x00; /// bit3bit1bit0 = 000: timer off
 }
-
-
 void TimerISR() {
 	TimerFlag = 1;
 }
-
 // In our approach, the C programmer does not touch this ISR, but rather TimerISR()
 ISR(TIMER1_COMPA_vect) {
 	// CPU automatically calls when TCNT1 == OCR1 (every 1 ms per TimerOn settings)
 	_avr_timer_cntcurr--; // Count down to 0 rather than up to TOP
-
 	if (_avr_timer_cntcurr == 0) { // results in a more efficient compare
 		TimerISR(); 	      // Call the ISR that the user uses
 		_avr_timer_cntcurr = _avr_timer_M;
 	}
-
 }
-
 // Set TimerISR() to tick every M ms
 void TimerSet(unsigned long M) {
 	_avr_timer_M = M;
 	_avr_timer_cntcurr = _avr_timer_M;
 }
 
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -130,90 +128,100 @@ void PWM_off() {
 /////////////////MAIN PROGRAM
 ////////////////////////////////////////
 
-unsigned char ToggleOnOff = 0x00;
-unsigned double frequency = 0x00; //Global since it needs to be kept track of
-double notes_Array[] = {261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25}; //8 size
-unsigned char n = 0x00; //Array traverser
+unsigned char button_check = 0x00;
+unsigned char Toggle = 0;
+double frequency = 0x00;
+double note_Array[] = {261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25}; 
+unsigned char n = 0;
 
-enum States {Wait, Toggle, init, Up, Down} state;
+enum States {Wait, ToggleON, init, Up, Down} state;
 
 void Tick() {
-		unsigned char A2 = (PINA & 0x04);
-		unsigned char A1 = (PINA & 0x02);
+		unsigned char A2 = ((PINA & 0x04) >> 2);
+		unsigned char A1 = ((PINA & 0x02) >> 1);
 		unsigned char A0 = (PINA & 0x01); 
-
 		
-		if (A0) {
+		if (!A0) {
 			button_check++;
 		}
-		if (A1) {
+		if (!A1) {
 			button_check++;
 		}
-		if (A2) {
+		if (!A2) {
 			button_check++;
 		}
+			
+	
 		
 			
 		
 		
 	switch(state) {
 		case init:
-			frequency = note_Array[0];
+			PORTC = 0x1F;
 			state = Wait;
 			break;
 		case Wait: //Mealy Transitions
-			if (button_check > 3) {
-				state = Wait;
-				button_check = 0;
+			PORTC = 0x1F;
+			if (button_check < 2) {
+			if ((!A0) && (A1) && (A2)) {
+				state = ToggleON;
 			}
-			else if (A0) {
-				state = Toggle;
-			}
-			else if (A1) {
-				state = Up;
-			}
-			else if (A2) {
+			else if ((A0) && (!A1) && (A2)) {
 				state = Down;
+			}
+			else if ((A0) && (A1) && (!A2)) {
+				state = Up;
+			} 
+			else {
+				state = Wait;
+			} 
 			}
 
 			break;
-		case Toggle:
-		
-			if (ToggleOnOff == 0x00) {
-				ToggleOnOff == 0x01); //On
-				PWM_on();
+		case ToggleON:
+			PORTC = 0x02;
+
+			if (button_check > 1) {
+			set_PWM(0);
+			}
+			
+			if (Toggle == 0) {
+				Toggle = 0x01;
 				set_PWM(frequency);
 			}
-			else if (ToggleOnOff == 0x01) {
-				ToggleOnOff = 0x00; //Off
-				PWM_off();
+			else if (Toggle == 1) {
+				Toggle = 0x00;
+				set_PWM(0);
 			}
-			
-			
-		
-			
-			
+			state = Wait;
 			
 			break;
 			
 		case Down:
+			PORTC = 0x04;
 			if (n == 0) {
 				n = 0;
 			}
 			else {
 				n--;
 				frequency = note_Array[n];
+				set_PWM(frequency);
 			}
+			state = Wait;
 			break;
 		case Up:
-		if (n == 8) {
-			n = 8;
-		}
-		else {
-			n++;
-			frequency = note_Array[n];
+			PORTC = 0x06;
+			if (n == 7) {
+				n = 7;
+			}
+			else {
+				n++;
+				frequency = note_Array[n];
+				set_PWM(frequency);
 
-		}
+			}	
+			state = Wait;
 			
 	}
 	
@@ -224,15 +232,14 @@ void Tick() {
 			break;
 		case Wait:
 			break;
-		case Toggle:
+		case ToggleON:
 			break;
 		case Up:
 			break;
 		case Down:
 			break;
-		
 	}
-	
+	button_check = 0;
 }
 
 
@@ -241,16 +248,17 @@ int main(void) {
     /* Insert DDR and PORT initializations */
 	DDRA = 0x00; PORTA = 0xFF;    // input
 	DDRB = 0xFF; PORTB = 0x00;   // output 
-	DDRC = 0xFF; PORTC = 0x00;  // output
-	DDRD = 0xFF; PORTD = 0x00; // output
-	//TimerSet(1000); // Timer Set to: 300 ms
-	//TimerOn();
-	State = init;
+	DDRC = 0xFF; PORTC = 0x00;  // output for state checking
+	DDRD = 0xFF; PORTD = 0x00; // output 
+	TimerSet(1000); // Timer Set to: 300 ms
+	TimerOn();
+	state = init;
+	PWM_on();
 
     while (1) {
 	Tick();
-	//while (!TimerFlag); // Wait 1 sec
-	//TimerFlag = 0;
+	while (!TimerFlag); // Wait 1 sec
+	TimerFlag = 0;
     }
     return 1;
 }
