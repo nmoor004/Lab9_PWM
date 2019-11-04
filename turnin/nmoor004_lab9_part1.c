@@ -10,78 +10,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdio.h>
-//#include "io.h"
-#include "RIMS.h"
-
-////////////////////////////////////////////////////////
-////////////////TIMER FUNCTIONS
-///////////////////////////////////////////////////////////
-/*
-volatile unsigned char TimerFlag = 0; // TimerISR() sets this to 1. C Programmer should clear to 0.
-
-unsigned long _avr_timer_M = 1;	       // Start count from here, down to 0. Default 1 ms.
-unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks
-unsigned short count = 0x00;
-
-void TimerOn() {
-	// AVR timer/counter controller register TCCR1
-	TCCR1B = 0x0B;     // bit3 = 0: CTC mode (clear timer on compare)
-		          // bit2bit1bit0 = 011: pre-scaler /64
-			 // 00001011: 0x0B
-			// SO, 8 MHz clock or 8,000,000 / 64 = 125,000 ticks/s
-		       // Thus, TCNT1 register will count at 125,000 tick/s
-
-	// AVR output compare register OCR1A.
-	OCR1A = 125;    // Timer interrupt will be generated when TCNT1==OCR1A
-		       // We want a 1 ms tick. 0.001s * 125,000 ticks/s = 125
-		      // So when TCNT1 register equals 125,
-		     // 1 ms has passed. Thus, we compare to 125.
-
-	// AVR timer interrupt mask register
-	TIMSK1 = 0x02; // bit1: OCIE1A -- enables compare match interrupt
-
-	// Initialize avr counter
-	TCNT1 = 0;
-
-	_avr_timer_cntcurr = _avr_timer_M;
-	// TimerISR will be called every _avr_timer_cntcurr milliseconds
-
-	// Enable globla interrupts
-	SREG |= 0x80; // 0x80: 1000000
-}
-
-void TimerOff() {
-	TCCR1B = 0x00; /// bit3bit1bit0 = 000: timer off
-}
-
-
-void TimerISR() {
-	TimerFlag = 1;
-}
-
-// In our approach, the C programmer does not touch this ISR, but rather TimerISR()
-ISR(TIMER1_COMPA_vect) {
-	// CPU automatically calls when TCNT1 == OCR1 (every 1 ms per TimerOn settings)
-	_avr_timer_cntcurr--; // Count down to 0 rather than up to TOP
-
-	if (_avr_timer_cntcurr == 0) { // results in a more efficient compare
-		TimerISR(); 	      // Call the ISR that the user uses
-		_avr_timer_cntcurr = _avr_timer_M;
-	}
-
-}
-
-// Set TimerISR() to tick every M ms
-void TimerSet(unsigned long M) {
-	_avr_timer_M = M;
-	_avr_timer_cntcurr = _avr_timer_M;
-}
-
-*/
-
-
-
-
 
 
 
@@ -130,66 +58,66 @@ void PWM_off() {
 /////////////////MAIN PROGRAM
 ////////////////////////////////////////
 
+unsigned char button_check = 0x00;
 enum States {Wait, ON, OFF, init} state;
-
+		double frequency = 0x00;
 void Tick() {
-		unsigned char A2 = (PINA & 0x04);
-		unsigned char A1 = (PINA & 0x02);
+		unsigned char A2 = ((PINA & 0x04) >> 2);
+		unsigned char A1 = ((PINA & 0x02) >> 1);
 		unsigned char A0 = (PINA & 0x01); 
-		unsigned double frequency = 0x00;
-		
-		if (A0) {
-			button_check++;
-		}
-		if (A1) {
-			button_check++;
-		}
-		if (A2) {
-			button_check++;
-		}
+
+	
 		
 			
 		
 		
 	switch(state) {
 		case init:
-			frequency = 0;
+			PORTC = 0x1F;
 			state = Wait;
 			break;
 		case Wait: //Mealy Transitions
-			if (button_check > 3) {
-				state = Wait;
-				button_check = 0;
-			}
-			else if (A0) {
+			PORTC = 0x1F;
+			if ((!A0) && (A1) && (A2)) {
 				frequency = 261.63; 
+				set_PWM(frequency);
 				state = ON;
 			}
-			else if (A1) {
+			else if ((A0) && (!A1) && (A2)) {
 				frequency = 293.66;
+				set_PWM(frequency);
 				state = ON;
 			}
-			else if (A2) {
+			else if ((A0) && (A1) && (!A2)) {
 				frequency = 329.63;
+				set_PWM(frequency);
 				state = ON;
-			}
+			} 
+			else {
+				state = Wait;
+			} 
 
 			break;
 		case ON:
-			PWM_on();
-			set_PWM(frequency);
+			PORTC = 0x02;
+
 			
-			if ((A0 == 0x00) && (A1 == 0x00) && (A2 == 0x00)) {
+			
+			if ((A0) && (A1) && (A2)) {
 				state = OFF;
 			}
-			
+			else {
+				state = ON;
+			}
 			
 			
 			break;
 			
 		case OFF:
-			PWM_off();
-				state = Wait;
+			PORTC = 0x04;
+			set_PWM(0);
+			state = Wait;
+
 		
 			break;
 			
@@ -217,11 +145,12 @@ int main(void) {
     /* Insert DDR and PORT initializations */
 	DDRA = 0x00; PORTA = 0xFF;    // input
 	DDRB = 0xFF; PORTB = 0x00;   // output 
-	DDRC = 0xFF; PORTC = 0x00;  // output
-	DDRD = 0xFF; PORTD = 0x00; // output
+	DDRC = 0xFF; PORTC = 0x00;  // output for state checking
+	DDRD = 0xFF; PORTD = 0x00; // output 
 	//TimerSet(1000); // Timer Set to: 300 ms
 	//TimerOn();
-	State = Wait;
+	state = init;
+	PWM_on();
 
     while (1) {
 	Tick();
