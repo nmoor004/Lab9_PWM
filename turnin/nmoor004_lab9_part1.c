@@ -65,7 +65,17 @@ void Tick() {
 		unsigned char A2 = ((PINA & 0x04) >> 2);
 		unsigned char A1 = ((PINA & 0x02) >> 1);
 		unsigned char A0 = (PINA & 0x01); 
-
+		
+		if (!A0) {
+			button_check++;
+		}
+		if (!A1) {
+			button_check++;
+		}
+		if (!A2) {
+			button_check++;
+		}
+			
 	
 		
 			
@@ -78,6 +88,7 @@ void Tick() {
 			break;
 		case Wait: //Mealy Transitions
 			PORTC = 0x1F;
+			if (button_check < 2) {
 			if ((!A0) && (A1) && (A2)) {
 				frequency = 261.63; 
 				set_PWM(frequency);
@@ -96,12 +107,15 @@ void Tick() {
 			else {
 				state = Wait;
 			} 
+			}
 
 			break;
 		case ON:
 			PORTC = 0x02;
 
-			
+			if (button_check > 1) {
+			set_PWM(0);
+			}
 			
 			if ((A0) && (A1) && (A2)) {
 				state = OFF;
@@ -136,7 +150,7 @@ void Tick() {
 			break;
 		
 	}
-	
+	button_check = 0;
 }
 
 
